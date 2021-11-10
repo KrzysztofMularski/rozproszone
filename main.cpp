@@ -1,8 +1,15 @@
 #include "main.hpp"
-#include "process.hpp"
-#include <pthread.h>
+
+MPI_Datatype MPI_PACKET_T;
 
 pthread_t threadCom;
+int rank;
+int size;
+
+int timestamp;
+
+pthread_mutex_t timestampMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t waitingForAcksMutex = PTHREAD_MUTEX_INITIALIZER;
 
 void check_thread_support(int provided)
 {
@@ -34,24 +41,71 @@ void init(int *argc, char ***argv)
     MPI_Init_thread(argc, argv, MPI_THREAD_MULTIPLE, &provided);
     check_thread_support(provided);
 
-    pthread_create( &threadCom, NULL, comThread, 0 );
-    // printf("I'm process %d", rank);
+    const int nitems = 4;
+    int blocklengths[4] = {1, 1, 1, 1};
+    MPI_Datatype types[4] = {MPI_INT, MPI_INT, MPI_INT, MPI_INT};
 
+    MPI_Aint    offsets[4];
+    offsets[0] = offsetof(packet_t, timestamp);
+    offsets[1] = offsetof(packet_t, replicaAction);
+    offsets[2] = offsetof(packet_t, docId);
+    offsets[3] = offsetof(packet_t, source);
+
+    MPI_Type_create_struct(nitems, blocklengths, offsets, types, &MPI_PACKET_T);
+    MPI_Type_commit(&MPI_PACKET_T);
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    timestamp = 0;
+
+    printf("I'm process %d\n", rank);
+    
+    srand(rank);
+
+    pthread_create( &threadCom, NULL, comThread, 0 );
 }
 
 void finalize()
 {	
-    //printf("czekam na wątek \"komunikacyjny\"\n");
-    // pthread_join(threadComm, NULL);
-    //if (rank == 0) pthread_join(threadMon,NULL);
-    // MPI_Type_free(&MPI_PACKET_T);
+    MPI_Type_free(&MPI_PACKET_T);
     MPI_Finalize();
+}
+
+void updateTimestamp(int newTs = -1)
+{
+    pthread_mutex_lock(&timestampMutex);
+    if (timestamp > newTs)
+        ++timestamp;
+    else
+        timestamp = newTs + 1;
+    pthread_mutex_unlock(&timestampMutex);
+}
+
+void recvPacket(packet_t& pkt, MPI_Status& status)
+{
+	MPI_Recv(&pkt, 1, MPI_PACKET_T, MPI_ANY_SOURCE, MPI_ANY_TAG, MPI_COMM_WORLD, &status);
+    updateTimestamp(pkt.timestamp);
+}
+
+void sendPacket(packet_t& pkt, int& destination, int tag)
+{
+    updateTimestamp();
+    MPI_Send(&pkt, 1, MPI_PACKET_T, destination, tag, MPI_COMM_WORLD);
+}
+
+void sendPacketToAll(packet_t& pkt, int tag)
+{
+    updateTimestamp();
+    for (int i=0; i<size; ++i)
+        MPI_Send(&pkt, 1, MPI_PACKET_T, i, tag, MPI_COMM_WORLD);
 }
 
 int main(int argc, char **argv)
 {
     init(&argc, &argv);
 
+    mainLoop();
 
     finalize();
 
