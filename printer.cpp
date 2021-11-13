@@ -9,7 +9,6 @@ void print(const char* fmt, ...)
     // setting color
     std::cout << "\033[0;" << colorCode << "m";
 
-    std::cout << "[" << rank << ", " << timestamp << "] ";
     std::string buf = "";
 
     while (*fmt != '\0') {
@@ -56,7 +55,6 @@ void debug(const char* fmt, ...)
     // setting color
     std::cout << "\033[0;37;41;1" << "m";
 
-    std::cout << "[" << rank << ", " << timestamp << "] ";
     std::string buf = "";
 
     while (*fmt != '\0') {

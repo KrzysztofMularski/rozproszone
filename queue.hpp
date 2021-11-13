@@ -4,10 +4,14 @@
 
 struct packet_t;
 
-void addToQueue(packet_t& qPos);
+void addToQueue(const packet_t&);
 
-void removeFromQueue(packet_t& qPos);
+void removeFromQueue(const packet_t&);
 
-bool canRead(packet_t& qPos);
+bool canUse(const packet_t&);
 
-bool canWrite(packet_t& qPos);
+bool canRead(const packet_t&);
+
+bool canWrite(const packet_t&);
+
+bool areSameReqsPresent(const packet_t&);

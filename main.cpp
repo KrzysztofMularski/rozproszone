@@ -13,6 +13,8 @@ pthread_mutex_t timestampMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t waitingForOwnTurnMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t acksCounterMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t printerMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t releaseListMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t reqMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t waitingForOwnTurnCond = PTHREAD_COND_INITIALIZER;
 
@@ -21,6 +23,8 @@ std::list<queuePosition> docsQueues[D];
 int acksCounter;
 
 packet_t currentReq = {-1, -1, -1, -1};
+
+std::list<int> docsToRelease;
 
 void check_thread_support(int provided)
 {
@@ -72,7 +76,7 @@ void init(int *argc, char ***argv)
     timestamp = 0;
     colorCode = rank % 7 + 31;
 
-    print("I'm process %d", rank);
+    print("[%d, %d] I'm process %d", rank, timestamp, rank);
     
     srand(rank);
 
@@ -120,7 +124,7 @@ void sendPacketToAll(packet_t& pkt, int tag)
 
 void waitingForOwnTurn()
 {
-    if (acksCounter == N-1)
+    if (acksCounter == N-1 && canUse(currentReq))
         return;
     pthread_mutex_lock(&waitingForOwnTurnMutex);
     pthread_cond_wait(&waitingForOwnTurnCond, &waitingForOwnTurnMutex);
@@ -139,7 +143,7 @@ void delay(const char& action)
         actionTime = SLEEP_TIME_END_CYCLE;
 
     const int sleepTime = actionTime * 1000 + rand() % (SLEEP_TIME_RANDOM_FLUCTUATIONS * 2000) - 1000; // ms
-    usleep(sleepTime*10);
+    usleep(sleepTime * 100);
 }
 
 void incAcksCounter()
@@ -159,6 +163,34 @@ void resetAcksCounter()
 void sendSignal()
 {
     pthread_cond_signal(&waitingForOwnTurnCond);
+}
+
+void addToReleaseList(const int& docId)
+{
+    pthread_mutex_lock(&releaseListMutex);
+    docsToRelease.push_back(docId);
+    pthread_mutex_unlock(&releaseListMutex);
+}
+
+void removeFromReleaseList(const int& docId)
+{
+    pthread_mutex_lock(&releaseListMutex);
+    docsToRelease.remove(docId);
+    pthread_mutex_unlock(&releaseListMutex);
+}
+
+bool inReleaseList(const int& docId)
+{
+    pthread_mutex_lock(&releaseListMutex);
+    std::list<int>::iterator it;
+    for (it = docsToRelease.begin(); it != docsToRelease.end(); ++it)
+        if (*it == docId)
+        {
+            pthread_mutex_unlock(&releaseListMutex);
+            return true;
+        }
+    pthread_mutex_unlock(&releaseListMutex); 
+    return false;
 }
 
 int main(int argc, char **argv)

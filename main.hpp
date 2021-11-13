@@ -13,10 +13,10 @@
 #include "printer.hpp"
 
 #define N 5 // processes
-#define K 3 // replicas
-#define D 1 // documents
+#define K 4 // replicas
+#define D 2 // documents
 
-#define PROB 25 // probability of writing to replica [0-100%]
+#define PROB 100 // probability of writing to replica [0-100%]
 
 #define REQ 0
 #define ACK 1
@@ -61,6 +61,7 @@ extern int acksCounter;
 extern packet_t currentReq;
 
 extern pthread_mutex_t printerMutex;
+extern pthread_mutex_t reqMutex;
 
 void updateTimestamp(int);
 
@@ -79,3 +80,9 @@ void incAcksCounter();
 void resetAcksCounter();
 
 void sendSignal();
+
+void addToReleaseList(const int&);
+
+void removeFromReleaseList(const int&);
+
+bool inReleaseList(const int&);

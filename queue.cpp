@@ -9,7 +9,7 @@ void printQueue(const int& docId)
     }
 }
 
-void addToQueue(packet_t& pkt)
+void addToQueue(const packet_t& pkt)
 {
     queuePosition qPos;
     qPos.timestamp = pkt.timestamp;
@@ -36,7 +36,7 @@ void addToQueue(packet_t& pkt)
     queue.insert(it, qPos);
 }
 
-void removeFromQueue(packet_t& pkt)
+void removeFromQueue(const packet_t& pkt)
 {
     std::list<queuePosition>& queue = docsQueues[pkt.docId];
 
@@ -46,7 +46,7 @@ void removeFromQueue(packet_t& pkt)
     std::list<queuePosition>::iterator it;
     for (it = queue.begin(); it != queue.end(); ++it)
     {
-        if (pkt.timestamp >= it->timestamp && pkt.source == it->processId && pkt.replicaAction == it->replicaAction)
+        if (pkt.timestamp >= it->timestamp && pkt.source == it->processId) // replicaAction doesn't matter !
         {
             queue.erase(it);
             return;
@@ -54,7 +54,15 @@ void removeFromQueue(packet_t& pkt)
     }
 }
 
-bool canRead(packet_t& pkt)
+bool canUse(const packet_t& pkt)
+{
+    if (pkt.replicaAction == ReplicaAction::READ)
+        return canRead(pkt);
+    else if (pkt.replicaAction == ReplicaAction::WRITE)
+        return canWrite(pkt);
+}
+
+bool canRead(const packet_t& pkt)
 {
     std::list<queuePosition>& queue = docsQueues[pkt.docId];
     std::list<queuePosition>::iterator it;
@@ -79,9 +87,25 @@ bool canRead(packet_t& pkt)
     }
 }
 
-bool canWrite(packet_t& pkt)
+bool canWrite(const packet_t& pkt)
 {
     std::list<queuePosition>::iterator it = docsQueues[pkt.docId].begin();
 
     return (it->timestamp == pkt.timestamp && it->processId == pkt.source && it->replicaAction == pkt.replicaAction);
+}
+
+bool areSameReqsPresent(const packet_t& pkt)
+{
+    std::list<queuePosition>& queue = docsQueues[pkt.docId];
+    std::list<queuePosition>::iterator it = queue.begin();
+
+    for (it = queue.begin(); it != queue.end(); ++it)
+    {
+        return (
+            it->timestamp == pkt.timestamp &&
+            it->processId == pkt.source &&
+            it->replicaAction == pkt.replicaAction &&
+            it != queue.end()
+        );
+    }
 }
