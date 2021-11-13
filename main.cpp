@@ -11,6 +11,8 @@ int timestamp;
 
 pthread_mutex_t timestampMutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t waitingForOwnTurnMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t acksCounterMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t printerMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_cond_t waitingForOwnTurnCond = PTHREAD_COND_INITIALIZER;
 
@@ -118,6 +120,8 @@ void sendPacketToAll(packet_t& pkt, int tag)
 
 void waitingForOwnTurn()
 {
+    if (acksCounter == N-1)
+        return;
     pthread_mutex_lock(&waitingForOwnTurnMutex);
     pthread_cond_wait(&waitingForOwnTurnCond, &waitingForOwnTurnMutex);
     pthread_mutex_unlock(&waitingForOwnTurnMutex);
@@ -135,7 +139,21 @@ void delay(const char& action)
         actionTime = SLEEP_TIME_END_CYCLE;
 
     const int sleepTime = actionTime * 1000 + rand() % (SLEEP_TIME_RANDOM_FLUCTUATIONS * 2000) - 1000; // ms
-    usleep(sleepTime*1000);
+    usleep(sleepTime*10);
+}
+
+void incAcksCounter()
+{
+    pthread_mutex_lock(&acksCounterMutex);
+    ++acksCounter;
+    pthread_mutex_unlock(&acksCounterMutex);
+}
+
+void resetAcksCounter()
+{
+    pthread_mutex_lock(&acksCounterMutex);
+    acksCounter = 0;
+    pthread_mutex_unlock(&acksCounterMutex);
 }
 
 void sendSignal()

@@ -19,7 +19,8 @@ void *comThread(void *ptr)
 
                 sendPkt.docId = recvPkt.docId;
                 sendPkt.replicaAction = recvPkt.replicaAction;
-                sendPacket(sendPkt, recvPkt.source, ACK);
+                if (recvPkt.source != rank)
+                    sendPacket(sendPkt, recvPkt.source, ACK);
 
                 // std::string actionStr = recvPkt.replicaAction == ReplicaAction::READ ? "reading" : "writing";
                 // print("Got REQ with ts=%d from process %d to access doc %d (%s), sending ACK", recvPkt.timestamp, recvPkt.source, recvPkt.docId, actionStr.c_str());
@@ -28,7 +29,10 @@ void *comThread(void *ptr)
             }
             case ACK:
             {
-                if (++acksCounter == N - 1 &&
+                // if (rank == 1 && timestamp > 100)
+                //     debug("GOT ACK");
+                incAcksCounter();
+                if (acksCounter == N - 1 &&
                     (
                         (currentReq.replicaAction == ReplicaAction::READ && canRead(currentReq)) ||
                         (currentReq.replicaAction == ReplicaAction::WRITE && canWrite(currentReq))
@@ -41,6 +45,7 @@ void *comThread(void *ptr)
             case RELEASE:
             {
                 removeFromQueue(recvPkt);
+                updateTimestamp(recvPkt.timestamp);
 
                 if (recvPkt.docId == currentReq.docId &&
                     (
@@ -78,7 +83,7 @@ void mainLoop()
         sendPkt.docId = docId;
         sendPkt.replicaAction = replicaAction;
 
-        acksCounter = 0;
+        resetAcksCounter();
         
         sendPacketToAll(sendPkt, REQ);
 

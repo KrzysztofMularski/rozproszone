@@ -1,13 +1,22 @@
 #include "queue.hpp"
 
-void addToQueue(packet_t& currentReq)
+void printQueue(const int& docId)
+{
+    std::cout << "Queue:\n";
+    for (const queuePosition& qPos : docsQueues[docId])
+    {
+        std::cout << qPos.timestamp << ", " << qPos.processId << ", " << qPos.replicaAction << std::endl;
+    }
+}
+
+void addToQueue(packet_t& pkt)
 {
     queuePosition qPos;
-    qPos.timestamp = currentReq.timestamp;
-    qPos.processId = currentReq.source;
-    qPos.replicaAction = currentReq.replicaAction;
+    qPos.timestamp = pkt.timestamp;
+    qPos.processId = pkt.source;
+    qPos.replicaAction = pkt.replicaAction;
 
-    std::list<queuePosition>& queue = docsQueues[currentReq.docId];
+    std::list<queuePosition>& queue = docsQueues[pkt.docId];
 
     if (queue.empty())
     {
@@ -18,7 +27,7 @@ void addToQueue(packet_t& currentReq)
     std::list<queuePosition>::iterator it;
     for (it = queue.begin(); it != queue.end(); ++it)
     {
-        if ((currentReq.timestamp < it->timestamp) || (currentReq.timestamp == it->timestamp && currentReq.source < it->processId))
+        if ((pkt.timestamp < it->timestamp) || (pkt.timestamp == it->timestamp && pkt.source < it->processId))
         {
             queue.insert(it, qPos);
             return;
@@ -27,9 +36,9 @@ void addToQueue(packet_t& currentReq)
     queue.insert(it, qPos);
 }
 
-void removeFromQueue(packet_t& currentReq)
+void removeFromQueue(packet_t& pkt)
 {
-    std::list<queuePosition>& queue = docsQueues[currentReq.docId];
+    std::list<queuePosition>& queue = docsQueues[pkt.docId];
 
     if (queue.empty())
         return;
@@ -37,7 +46,7 @@ void removeFromQueue(packet_t& currentReq)
     std::list<queuePosition>::iterator it;
     for (it = queue.begin(); it != queue.end(); ++it)
     {
-        if (currentReq.timestamp == it->timestamp && currentReq.source == it->processId && currentReq.replicaAction == it->replicaAction)
+        if (pkt.timestamp >= it->timestamp && pkt.source == it->processId && pkt.replicaAction == it->replicaAction)
         {
             queue.erase(it);
             return;
@@ -45,9 +54,9 @@ void removeFromQueue(packet_t& currentReq)
     }
 }
 
-bool canRead(packet_t& currentReq)
+bool canRead(packet_t& pkt)
 {
-    std::list<queuePosition>& queue = docsQueues[currentReq.docId];
+    std::list<queuePosition>& queue = docsQueues[pkt.docId];
     std::list<queuePosition>::iterator it;
 
     int readersCounter = 0;
@@ -55,7 +64,7 @@ bool canRead(packet_t& currentReq)
     
     for (it = queue.begin(); it != queue.end(); ++it)
     {
-        if (it->timestamp == currentReq.timestamp && it->processId == currentReq.source && it->replicaAction == currentReq.replicaAction)
+        if (it->timestamp == pkt.timestamp && it->processId == pkt.source && it->replicaAction == pkt.replicaAction)
         {
             if (writersCounter > 0)
                 return false;
@@ -70,9 +79,9 @@ bool canRead(packet_t& currentReq)
     }
 }
 
-bool canWrite(packet_t& currentReq)
+bool canWrite(packet_t& pkt)
 {
-    std::list<queuePosition>::iterator it = docsQueues[currentReq.docId].begin();
+    std::list<queuePosition>::iterator it = docsQueues[pkt.docId].begin();
 
-    return (it->timestamp == currentReq.timestamp && it->processId == currentReq.source && it->replicaAction == currentReq.replicaAction);
+    return (it->timestamp == pkt.timestamp && it->processId == pkt.source && it->replicaAction == pkt.replicaAction);
 }

@@ -60,6 +60,8 @@ extern int acksCounter;
 
 extern packet_t currentReq;
 
+extern pthread_mutex_t printerMutex;
+
 void updateTimestamp(int);
 
 void recvPacket(packet_t&, MPI_Status&);
@@ -71,5 +73,9 @@ void sendPacketToAll(packet_t&, int);
 void waitingForOwnTurn();
 
 void delay(const char&);
+
+void incAcksCounter();
+
+void resetAcksCounter();
 
 void sendSignal();

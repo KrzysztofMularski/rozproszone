@@ -16,3 +16,5 @@
 // white        37         47
 
 void print(const char* fmt, ...);
+
+void debug(const char* fmt, ...);
