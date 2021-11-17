@@ -10,11 +10,15 @@ void *comThread(void *ptr)
     {
         recvPacket(recvPkt, status);
 
+        std::string actionStr = recvPkt.replicaAction == ReplicaAction::READ ? "reading" : "writing";
+
         switch (status.MPI_TAG)
         {
             case REQ:
             {
                 pthread_mutex_lock(&reqMutex);
+                if (PRINT_GOT_REQ)
+                    print("[%d] [t%d] Got REQ from process %d to access doc %d for %s", rank, recvPkt.timestamp+1, recvPkt.source, recvPkt.docId, actionStr.c_str());
                 if (inReleaseList(recvPkt.docId))
                 {
                     // leaving replica - sending release messages
@@ -22,7 +26,7 @@ void *comThread(void *ptr)
                     sendPkt.replicaAction = -1; // doesn't matter, there could be anything
                     sendPacketToAll(sendPkt, RELEASE);
                     
-                    print("[%d, %d] Sending RELEASE to all - releasing doc %d replica", rank, sendPkt.timestamp, sendPkt.docId);
+                    print("[%d] [t%d] Sending RELEASE to all - releasing doc %d replica", rank, sendPkt.timestamp, sendPkt.docId);
 
                     // removing docId from docsToRelease list
                     removeFromReleaseList(recvPkt.docId);
@@ -41,7 +45,11 @@ void *comThread(void *ptr)
             }
             case ACK:
             {
+                if (PRINT_GOT_ACK)
+                    print("[%d] [t%d] Got ACK from process %d to access doc %d for %s", rank, recvPkt.timestamp+1, recvPkt.source, recvPkt.docId, actionStr.c_str());
                 incAcksCounter();
+                updateTimestamp(recvPkt.timestamp);
+                
                 if (acksCounter == N - 1 && canUse(currentReq))
                     sendSignal(); // cond signal to main thread
 
@@ -49,6 +57,8 @@ void *comThread(void *ptr)
             }
             case RELEASE:
             {
+                if (PRINT_GOT_RELEASE)
+                    print("[%d] [t%d] Got RELEASE from process %d about accessing doc %d for %s", rank, recvPkt.timestamp+1, recvPkt.source, recvPkt.docId, actionStr.c_str());
                 removeFromQueue(recvPkt);
                 updateTimestamp(recvPkt.timestamp);
 
@@ -89,13 +99,13 @@ void mainLoop()
 
         currentReq = sendPkt;
 
-        print("[%d, %d] Sending REQs to all to access doc %d replica for %s", rank, sendPkt.timestamp, docId, actionStr.c_str());
+        print("[%d] [t%d] Sending REQs to all to access doc %d replica for %s", rank, sendPkt.timestamp, docId, actionStr.c_str());
 
         // collecting acks and waiting for replica access - proper cond signal will be send to wake this thread
         waitingForOwnTurn();
 
         // using replica
-        print("[%d, %d] Doc %d replica: %s", rank, timestamp, docId, actionStr.c_str());
+        print("[%d] [t%d] Doc %d replica: %s", rank, timestamp, docId, actionStr.c_str());
         delay(actionStr[0]);
 
         // releasing only after getting req for this doc
@@ -106,14 +116,14 @@ void mainLoop()
         {
             // leaving replica - sending release messages
             sendPacketToAll(sendPkt, RELEASE);
-            print("[%d, %d] Sending RELEASE to all - releasing doc %d replica", rank, sendPkt.timestamp, sendPkt.docId);
+            print("[%d] [t%d] Sending RELEASE to all - releasing doc %d replica", rank, sendPkt.timestamp, sendPkt.docId);
         }
         else
         {
             addToReleaseList(docId);
         }
         pthread_mutex_unlock(&reqMutex);
-        print("[%d, %d] Done for now, going to sleep", rank, timestamp);
+        print("[%d] [t%d] Done for now, going to sleep", rank, timestamp);
         delay('e');
     }
 }

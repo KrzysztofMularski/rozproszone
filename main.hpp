@@ -16,13 +16,19 @@
 #define K 4 // replicas
 #define D 2 // documents
 
-#define PROB 100 // probability of writing to replica [0-100%]
+#define PROB 25 // probability of writing to replica [0-100%]
 
 #define REQ 0
 #define ACK 1
 #define RELEASE 2
 
-// sleeping times [s]
+// printing
+#define PRINT_GOT_REQ true
+#define PRINT_GOT_ACK true
+#define PRINT_GOT_RELEASE true
+
+// sleeping times [TIME_FACTOR * ms]
+#define TIME_FACTOR 1000
 #define SLEEP_TIME_READING 3
 #define SLEEP_TIME_WRITING 5
 #define SLEEP_TIME_END_CYCLE 5

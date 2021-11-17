@@ -99,13 +99,10 @@ bool areSameReqsPresent(const packet_t& pkt)
     std::list<queuePosition>& queue = docsQueues[pkt.docId];
     std::list<queuePosition>::iterator it = queue.begin();
 
-    for (it = queue.begin(); it != queue.end(); ++it)
-    {
-        return (
-            it->timestamp == pkt.timestamp &&
-            it->processId == pkt.source &&
-            it->replicaAction == pkt.replicaAction &&
-            it != queue.end()
-        );
-    }
+    return (
+        it->timestamp == pkt.timestamp &&
+        it->processId == pkt.source &&
+        it->replicaAction == pkt.replicaAction &&
+        it != queue.end()
+    );
 }

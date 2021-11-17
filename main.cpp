@@ -76,7 +76,7 @@ void init(int *argc, char ***argv)
     timestamp = 0;
     colorCode = rank % 7 + 31;
 
-    print("[%d, %d] I'm process %d", rank, timestamp, rank);
+    print("[%d] [t%d] I'm process %d", rank, timestamp, rank);
     
     srand(rank);
 
@@ -143,7 +143,7 @@ void delay(const char& action)
         actionTime = SLEEP_TIME_END_CYCLE;
 
     const int sleepTime = actionTime * 1000 + rand() % (SLEEP_TIME_RANDOM_FLUCTUATIONS * 2000) - 1000; // ms
-    usleep(sleepTime * 100);
+    usleep(sleepTime * TIME_FACTOR);
 }
 
 void incAcksCounter()
